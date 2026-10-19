@@ -206,11 +206,6 @@ Potential future improvements include:
 
 The primary objective of Campus Quest is to simplify achievement documentation, reduce scattered record-keeping, and help students maintain a reusable digital portfolio for academic, internship, placement, and career opportunities.
 
-## 👩‍💻 Developer
-
-**Sanghamithraa E**  
-BE Computer Science and Engineering  
-Thiagarajar College of Engineering, Madurai
 
 ## 📜 License
 
