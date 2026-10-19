@@ -7,11 +7,13 @@ import '../theme/campus_theme.dart';
 class AuthScreen extends StatefulWidget {
   const AuthScreen({
     required this.onLogin,
+    required this.onAdminLogin,
     required this.onRegister,
     super.key,
   });
 
   final Future<void> Function(String email, String password) onLogin;
+  final Future<void> Function(String email, String password) onAdminLogin;
   final Future<void> Function(Map<String, dynamic> details) onRegister;
 
   @override
@@ -27,6 +29,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   bool _registering = false;
+  bool _adminLogin = false;
   bool _busy = false;
   bool _obscurePassword = true;
   String? _error;
@@ -60,6 +63,8 @@ class _AuthScreenState extends State<AuthScreen> {
           'email': _email.text.trim(),
           'password': _password.text,
         });
+      } else if (_adminLogin) {
+        await widget.onAdminLogin(_email.text.trim(), _password.text);
       } else {
         await widget.onLogin(_email.text.trim(), _password.text);
       }
@@ -98,7 +103,14 @@ class _AuthScreenState extends State<AuthScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (wide) const Expanded(child: _WelcomePanel()),
+                      if (wide)
+                        Expanded(
+                          child: _WelcomePanel(
+                            height: (constraints.maxHeight - 40)
+                                .clamp(640.0, 820.0)
+                                .toDouble(),
+                          ),
+                        ),
                       Expanded(
                         child: Padding(
                           padding: EdgeInsets.all(wide ? 38 : 24),
@@ -128,13 +140,19 @@ class _AuthScreenState extends State<AuthScreen> {
             const SizedBox(height: 30),
           ],
           Text(
-            _registering ? 'Create your account' : 'Welcome back',
+            _registering
+                ? 'Create your account'
+                : _adminLogin
+                ? 'Admin login'
+                : 'Welcome back',
             style: theme.textTheme.headlineSmall,
           ),
           const SizedBox(height: 6),
           Text(
             _registering
                 ? 'Start collecting the milestones that shape your story.'
+                : _adminLogin
+                ? 'Sign in with your provisioned administrator account.'
                 : 'Sign in to continue building your achievement portfolio.',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: CampusColors.muted,
@@ -259,32 +277,94 @@ class _AuthScreenState extends State<AuthScreen> {
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : Text(_registering ? 'Create student account' : 'Sign in'),
+                  : Text(
+                      _registering
+                          ? 'Create student account'
+                          : _adminLogin
+                          ? 'Sign in as administrator'
+                          : 'Sign in',
+                    ),
             ),
           ),
           const SizedBox(height: 8),
-          TextButton(
-            onPressed: _busy
-                ? null
-                : () => setState(() {
-                    _registering = !_registering;
-                    _error = null;
-                  }),
-            child: Text(
-              _registering
-                  ? 'Already registered? Sign in'
-                  : 'New student? Create an account',
+          if (!_adminLogin)
+            TextButton(
+              onPressed: _busy
+                  ? null
+                  : () => setState(() {
+                      _registering = !_registering;
+                      _error = null;
+                    }),
+              child: Text(
+                _registering
+                    ? 'Already registered? Sign in'
+                    : 'New student? Create an account',
+              ),
             ),
-          ),
-          if (!_registering)
+          if (!_registering && !_adminLogin)
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
-                'Administrator access is provisioned by your college.',
+                'Administrator accounts are provisioned by your college.',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodySmall,
               ),
             ),
+          if (_adminLogin)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                'Admin accounts are provisioned by your college. '
+                'Registration is not available here.',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodySmall,
+              ),
+            ),
+          if (!_registering && !_adminLogin) ...[
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                const Expanded(child: Divider()),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Text(
+                    'COLLEGE STAFF',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: CampusColors.muted,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ),
+                const Expanded(child: Divider()),
+              ],
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              key: const Key('adminLoginOption'),
+              onPressed: _busy
+                  ? null
+                  : () => setState(() {
+                      _adminLogin = true;
+                      _error = null;
+                    }),
+              icon: const Icon(Icons.admin_panel_settings_outlined),
+              label: const Text('Admin Login'),
+            ),
+          ],
+          if (_adminLogin) ...[
+            const SizedBox(height: 12),
+            TextButton.icon(
+              key: const Key('backToStudentLogin'),
+              onPressed: _busy
+                  ? null
+                  : () => setState(() {
+                      _adminLogin = false;
+                      _error = null;
+                    }),
+              icon: const Icon(Icons.arrow_back_rounded, size: 18),
+              label: const Text('Back to student sign in'),
+            ),
+          ],
         ],
       ),
     );
@@ -326,12 +406,14 @@ class _BrandLockup extends StatelessWidget {
 }
 
 class _WelcomePanel extends StatelessWidget {
-  const _WelcomePanel();
+  const _WelcomePanel({required this.height});
+
+  final double height;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(minHeight: 640),
+      height: height,
       padding: const EdgeInsets.all(42),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -358,12 +440,14 @@ class _WelcomePanel extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              Text(
-                'CAMPUS QUEST',
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.1,
+              Expanded(
+                child: Text(
+                  'CAMPUS QUEST',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.1,
+                  ),
                 ),
               ),
             ],
@@ -388,17 +472,19 @@ class _WelcomePanel extends StatelessWidget {
                 ?.copyWith(color: const Color(0xFFDADBED), height: 1.6),
           ),
           const Spacer(),
-          const Row(
+          Row(
             children: [
-              Icon(
+              const Icon(
                 Icons.verified_user_outlined,
                 color: Color(0xFFDCD9F6),
                 size: 19,
               ),
-              SizedBox(width: 8),
-              Text(
-                'A private space for your academic story',
-                style: TextStyle(color: Color(0xFFE5E5F0)),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'A private space for your academic story',
+                  style: TextStyle(color: Color(0xFFE5E5F0)),
+                ),
               ),
             ],
           ),

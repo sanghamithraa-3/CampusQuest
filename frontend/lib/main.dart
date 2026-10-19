@@ -56,8 +56,29 @@ class _CampusQuestAppState extends State<CampusQuestApp> {
     }
   }
 
-  Future<void> _login(String email, String password) async {
+  Future<void> _adminLogin(String email, String password) async {
     final user = await _api.login(email, password);
+    if (!user.isAdmin) {
+      await _api.clearSession();
+      throw const ApiException(
+        'This is a student account. Use Admin Login for administrator access.',
+        statusCode: 403,
+      );
+    }
+    if (mounted) {
+      setState(() => _user = user);
+    }
+  }
+
+  Future<void> _studentLogin(String email, String password) async {
+    final user = await _api.login(email, password);
+    if (user.isAdmin) {
+      await _api.clearSession();
+      throw const ApiException(
+        'This is an administrator account. Use Admin Login instead.',
+        statusCode: 403,
+      );
+    }
     if (mounted) {
       setState(() => _user = user);
     }
@@ -65,6 +86,13 @@ class _CampusQuestAppState extends State<CampusQuestApp> {
 
   Future<void> _register(Map<String, dynamic> details) async {
     final user = await _api.registerStudent(details);
+    if (user.isAdmin) {
+      await _api.clearSession();
+      throw const ApiException(
+        'Only student accounts can be created through registration.',
+        statusCode: 403,
+      );
+    }
     if (mounted) {
       setState(() => _user = user);
     }
@@ -118,7 +146,11 @@ class _CampusQuestAppState extends State<CampusQuestApp> {
     }
     final user = _user;
     if (user == null) {
-      return AuthScreen(onLogin: _login, onRegister: _register);
+      return AuthScreen(
+        onLogin: _studentLogin,
+        onAdminLogin: _adminLogin,
+        onRegister: _register,
+      );
     }
     if (user.isAdmin) {
       return AdminDashboard(api: _api, user: user, onLogout: _logout);

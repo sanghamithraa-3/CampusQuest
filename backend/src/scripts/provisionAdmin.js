@@ -1,9 +1,12 @@
 import bcrypt from "bcryptjs";
+import dotenv from "dotenv";
 import { emitKeypressEvents } from "node:readline";
 import { connectDB } from "../config/db.js";
 import { AdminBootstrap } from "../models/AdminBootstrap.js";
 import { User } from "../models/User.js";
 import { adminCredentialsSchema } from "../utils/validation.js";
+
+dotenv.config();
 
 function readLine(prompt) {
   return new Promise((resolve, reject) => {
@@ -11,7 +14,9 @@ function readLine(prompt) {
     let value = "";
     const onData = (chunk) => {
       const text = chunk.toString();
-      if (text.includes("\n") || text.includes("\r")) {
+      const newlineIndex = text.search(/[\r\n]/);
+      if (newlineIndex !== -1) {
+        value += text.slice(0, newlineIndex);
         process.stdin.off("data", onData);
         process.stdin.pause();
         process.stdout.write("\n");

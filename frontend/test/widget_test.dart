@@ -17,6 +17,7 @@ void main() {
       MaterialApp(
         home: AuthScreen(
           onLogin: (email, password) async {},
+          onAdminLogin: (email, password) async {},
           onRegister: (details) async {},
         ),
       ),
@@ -25,7 +26,16 @@ void main() {
     expect(find.text('Welcome back'), findsOneWidget);
     expect(find.byKey(const Key('emailField')), findsOneWidget);
     expect(find.byKey(const Key('passwordField')), findsOneWidget);
-    expect(find.text('Admin'), findsNothing);
+    expect(find.byKey(const Key('adminLoginOption')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('adminLoginOption')));
+    await tester.pumpAndSettle();
+    expect(find.text('Admin login'), findsOneWidget);
+    expect(find.byKey(const Key('backToStudentLogin')), findsOneWidget);
+    expect(find.text('New student? Create an account'), findsNothing);
+
+    await tester.tap(find.byKey(const Key('backToStudentLogin')));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('New student? Create an account'));
     await tester.pumpAndSettle();
@@ -35,7 +45,68 @@ void main() {
     expect(find.byKey(const Key('rollNumberField')), findsOneWidget);
     expect(find.byKey(const Key('departmentField')), findsOneWidget);
     expect(find.byKey(const Key('yearField')), findsOneWidget);
-    expect(find.text('Admin'), findsNothing);
+    expect(find.byKey(const Key('adminLoginOption')), findsNothing);
+  });
+
+  testWidgets('admin login submits to its dedicated callback', (tester) async {
+    var studentLoginCalled = false;
+    var adminLoginEmail = '';
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AuthScreen(
+          onLogin: (email, password) async {
+            studentLoginCalled = true;
+          },
+          onAdminLogin: (email, password) async {
+            adminLoginEmail = email;
+          },
+          onRegister: (details) async {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('adminLoginOption')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('emailField')),
+      'admin@example.edu',
+    );
+    await tester.enterText(
+      find.byKey(const Key('passwordField')),
+      'administrator-password',
+    );
+    await tester.tap(find.text('Sign in as administrator'));
+    await tester.pumpAndSettle();
+
+    expect(adminLoginEmail, 'admin@example.edu');
+    expect(studentLoginCalled, isFalse);
+    expect(find.text('Admin login'), findsOneWidget);
+  });
+
+  testWidgets('desktop authentication panel has bounded scroll layout', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 720));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AuthScreen(
+          onLogin: (email, password) async {},
+          onAdminLogin: (email, password) async {},
+          onRegister: (details) async {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.text('New student? Create an account'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(const Key('fullNameField')), findsOneWidget);
+
+    await tester.binding.setSurfaceSize(null);
   });
 
   testWidgets('student overview adapts navigation on mobile and desktop', (
